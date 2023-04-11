@@ -769,6 +769,8 @@ By default, Certipy will request a certificate based on the `Machine` or `User` 
 
 We can then use a technique such as [PetitPotam](https://github.com/ly4k/PetitPotam) to coerce authentication. For domain controllers, we must specify `-template DomainController`.
 
+Update (4/11/2023):Added in functionality for capturing and relaing HTTP and WPAD authentication over port 80 in addition to the default 445/SMB traffic.
+
 ```bash
 $ certipy relay -ca ca.corp.local
 Certipy v4.0.0 - by Oliver Lyak (ly4k)
